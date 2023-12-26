@@ -1,0 +1,181 @@
+version: "2.3"
+networks:
+  servarr:
+    driver: bridge
+    driver_opts:
+      com.docker.network.namespace: home
+
+services:
+  plex:
+    container_name: plex
+    image: plexinc/pms-docker
+    restart: unless-stopped
+    ports:
+      - 32400-32414:32400-32414/tcp
+      - 1900:1900/udp
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ}
+      - PLEX_CLAIM=${CLAIM}
+    hostname: HomeServer
+    volumes:
+      - ${DOCKERCONFIG}/plex-media-server/data:/config
+      - ${DOCKERCONFIG}/plex-media-server/temp:/transcode
+      - ${MEDIADIR}:/data
+    devices:
+      - /dev/dri:/dev/dri
+    networks:
+      - servarr
+
+  sonarr:
+    container_name: sonarr
+    image: ghcr.io/hotio/sonarr
+    ports:
+      - 8989:8989
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID}
+      - UMASK=002
+      - TZ=${TZ}
+      - BITTORRENT_HOST=qbittorrent
+      - BITTORRENT_PORT=8081
+    volumes:
+      - ${DOCKERCONFIG}/sonarr:/config
+      - ${MEDIADIR}:/data
+    networks:
+      - servarr
+
+  qbittorrent:
+    container_name: qbittorrent
+    image: linuxserver/qbittorrent
+    ports:
+      - "6881:6881"
+      - "8081:8081"
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - UMASK=002
+      - WEBUI_PORT=8081
+    volumes:
+      - ${DOCKERCONFIG}/qBittorrent:/config
+      - ${MEDIADIR}/downloads/torrents:/downloads
+    networks:
+      - servarr
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${DOCKERCONFIG}/prowlarr:/config
+    ports:
+      - 9696:9696
+    restart: unless-stopped
+    networks:
+      - servarr
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ}
+      - BITTORRENT_HOST=qbittorrent
+      - BITTORRENT_PORT=8081
+    volumes:
+      - ${DOCKERCONFIG}/radarr:/config
+      - ${MEDIADIR}/Tv Show/Movies:/movies
+      - ${MEDIADIR}/downloads:/downloads
+    ports:
+      - 7878:7878
+    restart: unless-stopped
+    networks:
+      - servarr
+
+  whisparr:
+    container_name: whisparr
+    image: ghcr.io/hotio/whisparr:latest
+    ports:
+      - "6969:6969"
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ}
+    volumes:
+      - ${DOCKERCONFIG}/whisparr:/config
+      - ${MEDIADIR}/Tv Show/Others:/movies
+      - ${MEDIADIR}/downloads:/downloads
+    networks:
+        - servarr
+
+  jackett:
+    image: lscr.io/linuxserver/jackett:latest
+    container_name: jackett
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ}
+      - AUTO_UPDATE=true #optional
+      # -  RUN_OPTS= #optional
+    volumes:
+      - ${DOCKERCONFIG}/jackett:/config
+      - ${MEDIADIR}/downloads:/data
+    ports:
+      - 9117:9117
+    restart: unless-stopped
+    networks:
+        - servarr
+
+  readarr:
+    image: lscr.io/linuxserver/readarr:nightly
+    container_name: readarr
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ}
+    volumes:
+      - ${DOCKERCONFIG}/readarr:/config
+      - ${MEDIADIR}/Books:/books #optional
+      - ${MEDIADIR}/downloads:/data 
+    ports:
+      - 8787:8787
+    restart: unless-stopped  
+    networks:
+        - servarr
+
+  lidarr:
+    image: lscr.io/linuxserver/lidarr:latest
+    container_name: lidarr
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ}
+    volumes:
+      - ${DOCKERCONFIG}/lidarr:/config
+      - ${MEDIADIR}/Music:/music #optional
+      - ${MEDIADIR}/downloads:/data 
+    ports:
+      - 8686:8686
+    restart: unless-stopped
+    networks:
+        - servarr
+
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: bazarr
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ}
+    volumes:
+      - ${DOCKERCONFIG}/bazarr:/config
+      - ${MEDIADIR}/Tv Show:/movies #optional
+    ports:
+      - 6767:6767
+    restart: unless-stopped
+
